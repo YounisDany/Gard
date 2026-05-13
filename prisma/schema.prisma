@@ -1,0 +1,90 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String        @id @default(cuid())
+  username      String        @unique
+  email         String        @unique
+  passwordHash  String
+  role          String        @default("user") // "user" | "admin"
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  scannedUrls   ScannedUrl[]
+  notifications Notification[]
+}
+
+model ScannedUrl {
+  id          String      @id @default(cuid())
+  url         String
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  createdAt   DateTime    @default(now())
+  urlFeatures UrlFeatures?
+  scanResult  ScanResult?
+}
+
+model UrlFeatures {
+  id               String     @id @default(cuid())
+  scannedUrlId     String     @unique
+  scannedUrl       ScannedUrl @relation(fields: [scannedUrlId], references: [id], onDelete: Cascade)
+  urlLength        Int
+  domainLength     Int
+  numDots          Int
+  numHyphens       Int
+  numUnderscores   Int
+  numSlashes       Int
+  numAtSign        Int
+  numAmpersands    Int
+  numEquals        Int
+  numPercent       Int
+  hasHttps         Boolean
+  hasIpAddress     Boolean
+  hasSubdomain     Boolean
+  subdomainDepth   Int
+  hasPort          Boolean
+  hasSuspiciousKeywords Boolean
+  pathLength       Int
+}
+
+model ScanResult {
+  id                String     @id @default(cuid())
+  scannedUrlId      String     @unique
+  scannedUrl        ScannedUrl @relation(fields: [scannedUrlId], references: [id], onDelete: Cascade)
+  prediction        String     // "safe" | "suspicious" | "malicious"
+  confidence        Float
+  riskScore         Int        // 0-100
+  details           String     // JSON string with analysis details
+  siteAnalysis      String?    // JSON string with site analysis results
+  createdAt         DateTime   @default(now())
+}
+
+model SystemLog {
+  id        String   @id @default(cuid())
+  level     String   // "info" | "warn" | "error"
+  message   String
+  data      String?  // JSON string
+  createdAt DateTime @default(now())
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  title     String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
